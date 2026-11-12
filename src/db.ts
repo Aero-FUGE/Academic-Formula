@@ -1,0 +1,6 @@
+import type { Topic } from './types'
+const DB_NAME = 'academic-formula'; const STORE = 'topics'
+const open = () => new Promise<IDBDatabase>((resolve, reject) => { const req = indexedDB.open(DB_NAME, 1); req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' }); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error) })
+export async function loadTopics(): Promise<Topic[]> { if (!('indexedDB' in window)) return []; const db = await open(); return new Promise((resolve, reject) => { const req = db.transaction(STORE, 'readonly').objectStore(STORE).getAll(); req.onsuccess = () => resolve((req.result as Topic[]).sort((a,b) => b.updatedAt-a.updatedAt)); req.onerror = () => reject(req.error) }) }
+export async function saveTopic(topic: Topic) { const db = await open(); return new Promise<void>((resolve, reject) => { const req = db.transaction(STORE, 'readwrite').objectStore(STORE).put(topic); req.onsuccess = () => resolve(); req.onerror = () => reject(req.error) }) }
+export async function deleteTopic(id: string) { const db = await open(); return new Promise<void>((resolve, reject) => { const req = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id); req.onsuccess = () => resolve(); req.onerror = () => reject(req.error) }) }
