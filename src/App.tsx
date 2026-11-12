@@ -11,7 +11,7 @@ const statusText: Record<Status, string> = { 'not-started': '未开始', 'in-pro
 
 function App() {
   const [topics, setTopics] = useState<Topic[]>([]); const [activeId, setActiveId] = useState<string | null>(null); const [selectedSentence, setSelectedSentence] = useState<string | null>(null); const [selectedSlot, setSelectedSlot] = useState<string | null>(null); const [loaded, setLoaded] = useState(false); const importRef = useRef<HTMLInputElement>(null)
-  useEffect(() => { loadTopics().then(data => { setTopics(data); setLoaded(true) }) }, [])
+  useEffect(() => { loadTopics().then(data => { setTopics(data); setLoaded(true) }).catch(() => setLoaded(true)) }, [])
   const active = topics.find(t => t.id === activeId) ?? null
   const update = (next: Topic) => { const saved = { ...next, updatedAt: now() }; setTopics(items => items.map(t => t.id === saved.id ? saved : t)); void saveTopic(saved) }
   const create = () => { const title = window.prompt('题目名称', '新的名词解释'); if (!title?.trim()) return; const topic = newTopic(title.trim()); setTopics(items => [topic, ...items]); void saveTopic(topic); setActiveId(topic.id); setSelectedSentence(topic.sentences[0].id); setSelectedSlot(topic.sentences[0].slots[0].id) }
