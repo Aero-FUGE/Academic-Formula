@@ -1,27 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ModeHome from './HomePage'
-import { Archive, ArrowLeft, ArrowRight, BookOpen, Check, ChevronDown, Feather, Flame, Home, Library, LockKeyhole, Map as MapIcon, Menu, Mic2, Pencil, Plus, RotateCcw, Settings2, Sparkles, Star, Trophy, Volume2 } from 'lucide-react'
+import { Archive, ArrowLeft, ArrowRight, BookOpen, Check, Feather, Home, Library, Map as MapIcon, Menu, Pencil, Plus, RotateCcw, Settings2, Star, Trophy, Volume2 } from 'lucide-react'
+import { buildSentence, hasCompleted, nextFormula, nextPoint, slotsFromText, type TrainingRecord } from './training'
+import './training.css'
 
-type Stage = 'home' | 'map' | 'period' | 'select' | 'knowledge' | 'confirm' | 'fill' | 'generate' | 'library' | 'archive'
-type Composer = { name: string; years: string; field: string; contribution: string; problem: string; practice: string; work: string }
+type Stage = 'home' | 'map' | 'select-point' | 'select' | 'knowledge' | 'confirm' | 'fill' | 'generate' | 'library' | 'archive' | 'done'
+type Mode = 'knowledge' | 'formula'
 type Formula = { id: number; title: string; text: string; slots: string[]; progress: number }
-const seedComposer: Composer = { name: '克里斯托夫·格鲁克', years: '1714 — 1787', field: '歌剧与戏剧音乐', contribution: '推动歌剧改革', problem: '正歌剧的炫技化倾向', practice: '统一音乐与戏剧表达', work: '《奥菲欧与尤丽狄茜》' }
 const seedFormulas: Formula[] = [
   { id: 1, title: '历史背景与艺术地位', text: '置于【时期】【思想文化思潮】的历史背景之下，【国家】【人物】作为【音乐领域】的代表性人物，凭借其在【具体创作领域】所展现出的艺术探索与实践成果，在【相关音乐体裁或艺术传统】的演进过程中确立了重要的历史地位。', slots: ['时期', '思想文化思潮', '国家', '人物', '音乐领域', '具体创作领域', '相关音乐体裁或艺术传统'], progress: 0 },
   { id: 2, title: '传统承袭与个人风格', text: '其艺术创作在承袭【既有音乐传统】的同时，进一步将【创作理念】融入【具体音乐要素】的组织与发展之中，并借助【具体创作技法】强化【音乐表现效果】，由此形成了以【核心艺术特征】为主要标志的个人创作风格。', slots: ['既有音乐传统', '创作理念', '具体音乐要素', '具体创作技法', '音乐表现效果', '核心艺术特征'], progress: 0 },
   { id: 3, title: '创作实践与艺术贡献', text: '就【核心创作领域】而言，【人物】一方面通过【具体创作实践一】推动了【音乐体裁一】的【发展成果一】，另一方面又以【具体创作实践二】促进了【音乐体裁二】在【发展方向二】上的进一步完善，从而作出了重要的艺术贡献。', slots: ['核心创作领域', '人物', '具体创作实践一', '音乐体裁一', '发展成果一', '具体创作实践二', '音乐体裁二', '发展方向二'], progress: 0 },
 ]
-const knowledgePoints = [
-  '古希腊和中世纪', '浪漫主义时期', '20世纪', '悲剧', '格里高利圣咏', '奥尔加农', '经文歌', '吟游诗人', '德国', '巴托克', '肖斯塔科维奇',
-  '文艺复兴时期', '绝对音乐', '整体序列主义音乐', '梅西安', '新艺术', '众赞歌', '牧歌', '门德尔松', '无词歌', '勃拉姆斯', '偶然音乐', '凯奇', '勃艮第乐派', '佛兰德乐派',
-  '音色音乐', '帕莱斯特里那', '罗马乐派', '标题音乐', '印象主义音乐', '德彪西', '《牧神午后》', '文艺复兴时期的宗教改革音乐', '舒曼', '《新音乐杂志》', '表现主义音乐', '勋伯格', '《一个华沙幸存者》', '十二音体系', '第二维也纳乐派',
-  '巴洛克时期', '韦伯', '《自由射手》', '新古典主义', '斯特拉文斯基', '《春之祭》', '《调性游戏》', '六人团', '普罗科菲耶夫', '声乐', '歌剧', '正歌剧', '清唱剧', '康塔塔', '受难曲', '巴洛克时期歌剧的产生与发展',
-  '瓦格纳', '乐剧', '器乐', '前奏曲', '托卡塔', '赋格', '舒伯特', '《魔王》', '《鳟鱼》', '《冬之旅》', '《美丽的磨坊女》', '《未完成交响曲》', '巴洛克奏鸣曲', '巴洛克协奏曲', '古组曲', '巴洛克协奏曲的发展',
-  '马勒', '《大地之歌》', '理查·斯特劳斯', '《英雄的生涯》', '小约翰·施特劳斯', '个人信仰', '布鲁克纳', '俄罗斯', '民族旗帜派', '格林卡', '强力集团', '《图画展览会》', '《舍赫拉查德》',
-  '世界个人派', '柴可夫斯基', '拉赫玛尼诺夫', '斯克里亚宾', '法国', '柏辽兹', '固定乐思', '《幻想交响曲》', '《哈洛尔德在意大利》', '比才', '《卡门》', '折中派', '圣桑', '《动物狂欢节》', '法国民族乐派', '大歌剧', '浪漫主义时期法国歌剧的发展', '喜歌剧', '轻歌剧', '抒情歌剧',
-  '意大利', '罗西尼', '《塞维利亚的理发师》', '普契尼', '《蝴蝶夫人》', '《图兰朵》', '威尔第的歌剧创作', '《阿依达》', '《茶花女》', '其他民族', '肖邦', '夜曲', '斯美塔那', '《我的祖国》', '德沃夏克', '《自新大陆交响曲》', '格里格', '西贝柳斯', '李斯特', '主题变形', '交响诗的产生和发展', '艺术歌曲',
-  '古典主义时期', '古典奏鸣曲', '古典协奏曲', '古典交响曲', '弦乐四重奏', '奏鸣曲式', '格鲁克', '海顿', '莫扎特', '《费加罗的婚礼》', '《魔笛》', '贝多芬', '《英雄交响曲》', '《命运交响曲》', '《田园交响曲》', '《合唱交响曲》', '18世纪意大利喜歌剧的产生与发展', '曼海姆乐派', '维也纳古典乐派', '巴赫', '《平均律钢琴曲集》', '《马太受难曲》', '《勃兰登堡协奏曲》', '蒙特威尔第', 'A·斯卡拉蒂', '维瓦尔第', '《四季》', '科雷利', '拉莫', '吕利', '库普兰', '亨德尔', '《弥赛亚》', '普赛尔'
-]
+
 type KnowledgeGroup = { period: string; composers: string[]; works: string[]; genres: string[] }
 const knowledgeGroups: KnowledgeGroup[] = [
   { period: '古希腊与中世纪', composers: ['吟游诗人'], works: [], genres: ['悲剧', '格里高利圣咏', '奥尔加农', '经文歌'] },
@@ -31,66 +22,124 @@ const knowledgeGroups: KnowledgeGroup[] = [
   { period: '浪漫主义时期', composers: ['韦伯', '舒伯特', '瓦格纳', '马勒', '理查·斯特劳斯', '小约翰·施特劳斯', '布鲁克纳', '格林卡', '柴可夫斯基', '拉赫玛尼诺夫', '斯克里亚宾', '柏辽兹', '比才', '圣桑', '罗西尼', '普契尼', '威尔第', '肖邦', '斯美塔那', '德沃夏克', '格里格', '西贝柳斯', '李斯特'], works: ['《自由射手》', '《魔王》', '《鳟鱼》', '《冬之旅》', '《美丽的磨坊女》', '《未完成交响曲》', '《大地之歌》', '《英雄的生涯》', '《图画展览会》', '《舍赫拉查德》', '《幻想交响曲》', '《哈洛尔德在意大利》', '《卡门》', '《动物狂欢节》', '《塞维利亚的理发师》', '《蝴蝶夫人》', '《图兰朵》', '《阿依达》', '《茶花女》', '夜曲', '《我的祖国》', '《自新大陆交响曲》'], genres: ['绝对音乐', '标题音乐', '艺术歌曲', '乐剧', '大歌剧', '喜歌剧', '轻歌剧', '抒情歌剧', '交响诗', '主题变形'] },
   { period: '20世纪', composers: ['巴托克', '肖斯塔科维奇', '梅西安', '凯奇', '德彪西', '勋伯格', '斯特拉文斯基', '普罗科菲耶夫'], works: ['《牧神午后》', '《一个华沙幸存者》', '《春之祭》', '《调性游戏》'], genres: ['整体序列主义音乐', '偶然音乐', '音色音乐', '印象主义音乐', '表现主义音乐', '十二音体系', '第二维也纳乐派', '新古典主义', '六人团'] },
 ]
-const allKnowledgePoints = knowledgeGroups.flatMap(group => [...group.composers, ...group.works, ...group.genres])
+
 const groupPoints = (group: KnowledgeGroup) => [...group.composers, ...group.works, ...group.genres]
-const chapterForProgress = (progress: number) => { let cursor = 0; for (const group of knowledgeGroups) { const count = groupPoints(group).length; if (progress < cursor + count) return group; cursor += count } return knowledgeGroups[knowledgeGroups.length - 1] }
+const allKnowledgePoints = [...new Set(knowledgeGroups.flatMap(groupPoints))]
 const groupForPoint = (point: string) => knowledgeGroups.find(group => groupPoints(group).includes(point)) || knowledgeGroups[3]
 const pointType = (point: string, group: KnowledgeGroup) => group.composers.includes(point) ? '作曲家' : group.works.includes(point) ? '音乐作品' : '音乐体裁 / 艺术传统'
-const formulaState = () => { if (localStorage.getItem('af-formula-version') !== '3') { localStorage.setItem('af-formula-version', '3'); save('af-formulas', seedFormulas); return seedFormulas } return load('af-formulas', seedFormulas) }
 const load = <T,>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) || '') as T } catch { return fallback } }
-const save = (key: string, value: unknown) => localStorage.setItem(key, JSON.stringify(value))
+type Draft = { stage: Stage; mode: Mode; point: string; formulaId: number; answers: Record<string, string>; filled: Record<string, string>; essay: string; reviewed: boolean; attemptId: string }
+const initialDraft = (): Draft => ({ stage: 'home', mode: 'formula', point: '', formulaId: 1, answers: {}, filled: {}, essay: '', reviewed: false, attemptId: crypto.randomUUID() })
 
 export default function App() {
-  const [stage, setStage] = useState<Stage>('home')
-  const [mode, setMode] = useState<'knowledge' | 'formula'>('knowledge')
-  const [formulaRuns, setFormulaRuns] = useState<Record<string, number>>(() => load('af-formula-runs', {}))
-  const [composer] = useState<Composer>(() => load('af-composer', seedComposer))
-  const [formulas, setFormulas] = useState<Formula[]>(formulaState)
-  const [answers, setAnswers] = useState<Record<string, string>>(() => load('af-answers', seedComposer))
-  const [selectedFormula, setSelectedFormula] = useState(0), [tokens, setTokens] = useState<string[]>([]), [essay, setEssay] = useState('')
-  const [points, setPoints] = useState(() => load('af-points', 1280)), [trained, setTrained] = useState(() => load('af-trained', 1)), [knowledgeProgress, setKnowledgeProgress] = useState(() => load('af-knowledge-progress', 8)), [selectedPeriod, setSelectedPeriod] = useState(() => load('af-period', '古典主义时期')), [showReference, setShowReference] = useState(false)
-  const formula = formulas[selectedFormula] || formulas[0]
-  const trainingIndex = mode === 'knowledge' ? knowledgeProgress : (formulaRuns[String(formula.id)] || 0)
-  const currentPoint = allKnowledgePoints[Math.min(trainingIndex, allKnowledgePoints.length - 1)] || allKnowledgePoints[0]
-  const currentGroup = groupForPoint(currentPoint)
-  useEffect(() => { save('af-composer', composer); save('af-answers', answers); save('af-formulas', formulas); save('af-points', points); save('af-trained', trained); save('af-knowledge-progress', knowledgeProgress); save('af-period', selectedPeriod) }, [composer, answers, formulas, points, trained, knowledgeProgress, selectedPeriod])
-  const wordBank = useMemo(() => formula.slots.map(slot => answers[slot]).filter(Boolean), [answers, formula])
-  const go = (next: Stage) => { setStage(next); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  const startGame = () => { setMode('knowledge'); setSelectedPeriod(chapterForProgress(knowledgeProgress).period); setAnswers({}); setTokens([]); setEssay(''); setShowReference(false); go('period') }
-  const startFormula = () => { setMode('formula'); setAnswers({}); setTokens([]); setEssay(''); setShowReference(false); go('select') }
-  const updateAnswer = (key: string, value: string) => setAnswers(prev => ({ ...prev, [key]: value }))
-  const finish = () => { setPoints(p => p + 120); setTrained(n => n + 1); if (mode === 'knowledge') setKnowledgeProgress(n => Math.min(allKnowledgePoints.length, n + 1)); else { const next = { ...formulaRuns, [String(formula.id)]: (formulaRuns[String(formula.id)] || 0) + 1 }; setFormulaRuns(next); save('af-formula-runs', next) } go('home') }
-  const newFormula = () => setFormulas(items => [...items, { id: Date.now(), title: '新的学术句型', text: '在【背景】下，【人物】通过【方法】，从而实现了【贡献】。', slots: ['背景', '人物', '方法', '贡献'], progress: 0 }])
-  return <div className="app"><div className="ambient" />
-    {stage === 'home' && <ModeHome points={points} completed={knowledgeProgress} total={allKnowledgePoints.length} patternCount={formulas.length} onKnowledge={startGame} onFormula={startFormula} />}
-    {stage === 'map' && <KnowledgeMapPage progress={knowledgeProgress} go={go} />}
-    {stage === 'period' && <CurrentPointPage point={currentPoint} go={go} />}
-    {stage === 'select' && <FormulaSelectPage formulas={formulas} selected={selectedFormula} point={currentPoint} mode={mode} runs={formulaRuns} select={(index) => { setSelectedFormula(index); go('knowledge') }} go={go} />}
-    {stage === 'knowledge' && <KnowledgePage point={currentPoint} group={currentGroup} formula={formula} answers={answers} setAnswer={updateAnswer} go={go} />}
-    {stage === 'confirm' && <ConfirmPage formula={formula} answers={answers} go={go} />}
-    {stage === 'fill' && <FillPage point={currentPoint} formula={formula} tokens={tokens} setTokens={setTokens} wordBank={wordBank} go={go} />}
-    {stage === 'generate' && <GeneratePage point={currentPoint} essay={essay} setEssay={setEssay} showReference={showReference} setShowReference={setShowReference} answers={answers} formula={formula} finish={finish} />}
-    {stage === 'library' && <LibraryPage formulas={formulas} setFormulas={setFormulas} newFormula={newFormula} selectedFormula={selectedFormula} setSelectedFormula={setSelectedFormula} go={go} />}
-    {stage === 'archive' && <ArchivePage points={points} trained={trained} go={go} />}
-    {['home', 'map', 'library', 'archive'].includes(stage) && <BottomNav stage={stage} go={go} />}
+  const [records, setRecords] = useState<TrainingRecord[]>(() => load('af-training-records-v1', []))
+  const [formulas, setFormulas] = useState<Formula[]>(() => {
+    const stored = load<Formula[]>('af-formulas', seedFormulas)
+    return (Array.isArray(stored) && stored.length ? stored : seedFormulas).map(f => ({ ...f, slots: slotsFromText(f.text) }))
+  })
+  const [draft, setDraft] = useState<Draft>(() => load('af-training-draft-v1', initialDraft()))
+  const saving = useRef(false)
+  const finishedAttempts = useRef(new Set<string>())
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const formula = formulas.find(f => f.id === draft.formulaId) || formulas[0]
+  const { stage, mode, point, answers, filled, essay } = draft
+  const go = (stage: Stage) => { setDraft(d => ({ ...d, stage })); window.scrollTo(0, 0) }
+  useEffect(() => {
+    try { localStorage.setItem('af-training-draft-v1', JSON.stringify(draft)); localStorage.setItem('af-formulas', JSON.stringify(formulas)) }
+    catch { setError('本机存储空间不足，请保留当前页面。') }
+  }, [draft, formulas])
+  const completedPoints = allKnowledgePoints.filter(p => formulas.every(f => hasCompleted(records, f.id, p))).length
+  const begin = (mode: Mode, formulaId: number, point: string) => {
+    saving.current = false
+    setError('')
+    setDraft({ ...initialDraft(), mode, formulaId, point, stage: 'knowledge' })
+    window.scrollTo(0, 0)
+  }
+  const chooseFormula = (f: Formula) => {
+    const next = nextPoint(records, f.id, allKnowledgePoints)
+    if (next) begin('formula', f.id, next)
+    else setDraft({ ...initialDraft(), mode: 'formula', formulaId: f.id, stage: 'done' })
+  }
+  const choosePoint = (point: string) => {
+    const id = nextFormula(records, point, formulas)
+    if (id !== undefined) begin('knowledge', id, point)
+    else setDraft({ ...initialDraft(), mode: 'knowledge', point, stage: 'done' })
+  }
+  const finish = () => {
+    if (saving.current || finishedAttempts.current.has(draft.attemptId) || !essay.trim()) return
+    saving.current = true
+    const record: TrainingRecord = { id: draft.attemptId, formulaId: formula.id, formulaTitle: formula.title, point, mode, answers, template: formula.text, sentence: buildSentence(formula.text, filled), essay, completedAt: new Date().toISOString() }
+    const updated = records.some(r => r.id === record.id) ? records : [...records, record]
+    try { localStorage.setItem('af-training-records-v1', JSON.stringify(updated)) }
+    catch { saving.current = false; setError('保存失败，请释放本机存储空间后重试。'); return }
+    finishedAttempts.current.add(draft.attemptId)
+    setRecords(updated)
+    if (mode === 'formula') {
+      const next = nextPoint(updated, formula.id, allKnowledgePoints)
+      if (next) { begin(mode, formula.id, next); return }
+    } else {
+      const next = nextFormula(updated, point, formulas)
+      if (next !== undefined) { begin(mode, next, point); return }
+    }
+    setDraft(d => ({ ...d, stage: 'done' }))
+  }
+  const newFormula = () => setFormulas(fs => [...fs, { id: Date.now(), title: '新的学术句型', text: '【人物】通过【方法】作出了【贡献】。', slots: ['人物', '方法', '贡献'], progress: 0 }])
+  const edit = (f: Formula) => {
+    const title = window.prompt('编辑句型名称', f.title)
+    if (!title?.trim()) return
+    const text = window.prompt('编辑完整句型，使用【槽位标题】设置知识槽位', f.text)
+    if (!text?.trim() || !slotsFromText(text).length) return
+    setFormulas(fs => fs.map(item => item.id === f.id ? { ...f, title: title.trim(), text, slots: slotsFromText(text) } : item))
+  }
+  return <div className="app"><div className="ambient"/>{error && <p role="alert" className="training-error">{error}</p>}
+    {stage === 'home' && <ModeHome points={records.length * 120} completed={completedPoints} total={allKnowledgePoints.length} patternCount={formulas.length} onFormula={() => { setDraft(d => ({ ...d, mode: 'formula' })); go('select') }} onKnowledge={() => { setDraft(d => ({ ...d, mode: 'knowledge' })); go('select-point') }}/>}
+    {stage === 'select' && <main className="page select-page"><Header title="选择训练句型" go={go}/><div className="formula-choice-list">{formulas.map((f, i) => <button className="formula-choice" key={f.id} onClick={() => chooseFormula(f)}><span className="choice-number">0{i + 1}</span><span><b>{f.title}</b><small>已练 {new Set(records.filter(r => r.formulaId === f.id).map(r => r.point)).size} / {allKnowledgePoints.length} 个考点 · {records.filter(r => r.formulaId === f.id).length} 次</small></span><ArrowRight size={17}/></button>)}</div></main>}
+    {(stage === 'map' || stage === 'select-point') && <main className="page map-page"><Header title={stage === 'map' ? '考点地图' : '选择训练考点'} go={go}/><section className="map-progress-card"><MapIcon/><div><span>全部句型均已完成的考点</span><strong>{completedPoints} / {allKnowledgePoints.length}</strong></div></section><input className="point-search" placeholder="搜索作曲家、作品或体裁" aria-label="搜索考点" value={search} onChange={e => setSearch(e.target.value)}/>{knowledgeGroups.map(group => {
+      const categories = stage === 'select-point' ? [['作曲家', group.composers], ['音乐作品', group.works]] as const : [['作曲家', group.composers], ['音乐作品', group.works], ['音乐体裁 / 传统', group.genres]] as const
+      return <section className="map-period training-chapter" key={group.period}><h2>{group.period}</h2>{categories.map(([label, points]) => <div className="point-category" key={label}><h3>{label}</h3>{points.filter(p => p.includes(search.trim())).map(p => <details className="point-progress" key={p}><summary>{p}<small>{formulas.filter(f => hasCompleted(records, f.id, p)).length} / {formulas.length} 句型</small></summary><ul>{formulas.map(f => <li key={f.id}>{hasCompleted(records, f.id, p) ? '✓ 已完成' : '○ 未完成'} · {f.title}</li>)}</ul><button className="primary-button" onClick={() => choosePoint(p)}>以此考点训练 <ArrowRight size={15}/></button></details>)}</div>)}</section>
+    })}</main>}
+    {['knowledge', 'confirm', 'fill', 'generate'].includes(stage) && <div className="session-label">{mode === 'formula' ? '句型专项 · 固定句型' : '考点专项 · 固定考点'}<br/>{point} · {formula.title}</div>}
+    {stage === 'knowledge' && <KnowledgePage point={point} group={groupForPoint(point)} formula={formula} answers={answers} setAnswer={(slot, value) => setDraft(d => ({ ...d, answers: { ...d.answers, [slot]: value } }))} go={next => { if (next === 'confirm' && formula.slots.some(slot => !answers[slot]?.trim())) { setError('请填写所有知识槽位后继续。'); return } setError(''); go(next) }}/>}
+    {stage === 'confirm' && <ConfirmPage formula={formula} answers={answers} go={go}/>}
+    {stage === 'fill' && <FillPage point={point} formula={formula} answers={answers} filled={filled} setFilled={filled => setDraft(d => ({ ...d, filled }))} go={go}/>}
+    {stage === 'generate' && <GeneratePage draft={draft} formula={formula} setDraft={setDraft} finish={finish} go={go}/>}
+    {stage === 'library' && <main className="page library-page"><Header title="句型档案" go={go}/><div className="library-intro"><BookOpen/><p>{formulas.length} 个句型 · 双模式共用记录</p><button onClick={newFormula}><Plus size={16}/>新增</button></div>{formulas.map(f => {
+      const history = records.filter(r => r.formulaId === f.id)
+      const practiced = [...new Set(history.map(r => r.point))]
+      return <section className="formula-archive" key={f.id}><div className="card-title"><h2>{f.title}</h2><button aria-label={'编辑' + f.title} onClick={() => edit(f)}><Settings2 size={16}/></button></div><p>{f.text}</p><strong>{history.length} 次练习 · {practiced.length} / {allKnowledgePoints.length} 个考点</strong><details><summary>练过哪些考点</summary><div className="chips">{practiced.length ? practiced.map(p => <span key={p}>✓ {p}</span>) : '尚无已完成记录'}</div></details><button className="primary-button" onClick={() => chooseFormula(f)}>继续练习此句型</button></section>
+    })}</main>}
+    {stage === 'archive' && <main className="page archive-page"><Header title="学习档案" go={go}/><div className="stats-grid"><div><strong>{records.length}</strong><span>累计训练次数</span></div><div><strong>{new Set(records.map(r => r.point)).size}</strong><span>练过的考点</span></div><div><strong>{completedPoints}</strong><span>全部句型已完成</span></div></div>{[...records].reverse().map(r => <details className="history training-history" key={r.id}><summary>{r.point} · {r.formulaTitle}<small>{new Date(r.completedAt).toLocaleString()} · {r.mode === 'formula' ? '句型专项' : '考点专项'}</small></summary><h3>知识定位</h3>{Object.entries(r.answers).map(([key, value]) => <p key={key}>{key}：{value}</p>)}<h3>句型填充</h3><p>{r.sentence}</p><h3>独立生成</h3><p>{r.essay}</p></details>)}{!records.length && <p>完成三阶段训练并确认后，记录会出现在这里。</p>}</main>}
+    {stage === 'done' && <main className="page"><Header title="本轮训练完成" go={go}/><section className="current-point-card"><Trophy/><h2>{mode === 'formula' ? formula.title : point}</h2><p>{mode === 'formula' ? '此句型已练完全部考点。' : '此考点已完成全部句型。'}</p><button className="primary-button" onClick={() => go(mode === 'formula' ? 'select' : 'select-point')}>选择下一轮训练</button><button className="text-action" onClick={() => go('archive')}>查看训练记录</button></section></main>}
+    {['home', 'map', 'library', 'archive'].includes(stage) && <BottomNav stage={stage} go={go}/>}
   </div>
 }
-
 function Header({ title, eyebrow, go }: { title: string; eyebrow?: string; go: (stage: Stage) => void }) { return <header className="top"><button className="back" onClick={() => go('home')}><ArrowLeft size={18} /></button><div><span className="eyebrow">{eyebrow || 'ACADEMIC FORMULA'}</span><h1>{title}</h1></div><button className="top-icon"><Menu size={19} /></button></header> }
 function Progress({ current }: { current: number }) { return <div className="stage-progress"><div className={current >= 1 ? 'on' : ''}><span>01</span><small>知识定位</small></div><i /><div className={current >= 2 ? 'on' : ''}><span>02</span><small>句型填充</small></div><i /><div className={current >= 3 ? 'on' : ''}><span>03</span><small>独立生成</small></div></div> }
 
-function CurrentPointPage({ point, go }: { point: string; go: (stage: Stage) => void }) { return <main className="page period-page"><Header title="当前考点" eyebrow="YOUR NEXT KNOWLEDGE POINT" go={go} /><section className="current-point-card"><span>本次题目</span><div className="point-badge">✦</div><h2>{point}</h2></section><button className="primary-button bottom-button" onClick={() => go('select')}>选择句型 <ArrowRight size={17} /></button></main> }
-
-function KnowledgeGroupPreview({ group }: { group: KnowledgeGroup }) { return <section className="period-preview"><div className="card-title"><span>✧ 本阶段具体名词</span><span>时期是分类，名词才是考点</span></div><div className="preview-block"><b>作曲家关卡</b><div>{group.composers.map(item => <span key={item}>{item}</span>)}</div></div><div className="preview-block"><b>音乐作品关卡</b><div>{group.works.length ? group.works.map(item => <span key={item}>{item}</span>) : <em>暂无作品条目</em>}</div></div><div className="preview-block"><b>音乐体裁 / 传统关卡</b><div>{group.genres.map(item => <span key={item}>{item}</span>)}</div></div></section> }
-
-function FormulaSelectPage({ formulas, selected, point, mode, runs, select, go }: { formulas: Formula[]; selected: number; point: string; mode: 'knowledge' | 'formula'; runs: Record<string, number>; select: (index: number) => void; go: (stage: Stage) => void }) { return <main className="page select-page"><Header title="选择句型" eyebrow="CHOOSE YOUR FORMULA" go={go} /><div className="select-intro"><Sparkles size={21} /><div><h2>{mode === 'formula' ? '选择要专项练习的句型' : `围绕「${point}」选择句型`}</h2><p>{mode === 'formula' ? '固定一个句型，依次更换考点，反复演练表达结构。' : '考点已经自动选定，只需选择一种表达路线。'}</p></div></div><div className="formula-choice-list">{formulas.map((item, index) => <button className={`formula-choice ${selected === index ? 'selected' : ''}`} key={item.id} onClick={() => select(index)}><span className="choice-number">0{index + 1}</span><span><b>{item.title}</b><small>{item.slots.length} 个知识槽位 · {runs[String(item.id)] || 0} 次专项练习</small></span><ArrowRight size={17} /></button>)}</div><button className="text-action" onClick={() => go('library')}>进入句型库编辑句型 <Settings2 size={15} /></button></main> }
-
-function KnowledgeMapPage({ progress, go }: { progress: number; go: (stage: Stage) => void }) { const percent = Math.round(progress / allKnowledgePoints.length * 100); return <main className="page map-page"><Header title="考点地图" eyebrow="THE KNOWLEDGE QUEST" go={go} /><section className="map-progress-card"><div className="map-orb"><MapIcon size={22} /></div><div><span>具体名词研习进度</span><strong>{progress} <small>/ {allKnowledgePoints.length} 个具体考点</small></strong></div><b>{percent}%</b></section><div className="map-tip"><Sparkles size={14} />时期是章节分类，不计入进度；作曲家、作品、体裁等具体名词才是关卡。</div><section className="map-period-list">{knowledgeGroups.map(group => <div className="map-period" key={group.period}><h2>{group.period}<small>章节 · {group.composers.length + group.works.length + group.genres.length} 个具体考点</small></h2><div>{[...group.composers, ...group.works, ...group.genres].map(item => { const index = allKnowledgePoints.indexOf(item); const unlocked = index < progress; return <span className={unlocked ? 'unlocked' : ''} key={item}>{unlocked ? <Check size={11} /> : <LockKeyhole size={10} />}{item}</span> })}</div></div>)}</section></main> }
-
 function KnowledgePage({ point, group, formula, answers, setAnswer, go }: { point: string; group: KnowledgeGroup; formula: Formula; answers: Record<string, string>; setAnswer: (key: string, value: string) => void; go: (stage: Stage) => void }) { return <main className="page flow-page"><Header title="知识定位" eyebrow="FIRST CHAMBER · 01" go={go} /><Progress current={1} /><section className="person-card"><div className="portrait">✦</div><div><span>{group.period} · CURRENT POINT</span><h2>{point}</h2><p>{pointType(point, group)} · 自动联动考点</p></div><Feather size={25} /></section><section className="form-card formula-slots">{formula.slots.map(slot => <label className="knowledge-field" key={slot}><span>{slot}<b>*</b></span><input value={answers[slot] || ''} onChange={e => setAnswer(slot, e.target.value)} placeholder={`填写${slot}`} /></label>)}</section><button className="primary-button bottom-button" onClick={() => go('confirm')}>确认知识 <ArrowRight size={17} /></button></main> }
 function ConfirmPage({ formula, answers, go }: { formula: Formula; answers: Record<string, string>; go: (stage: Stage) => void }) { return <main className="page flow-page"><Header title="知识确认" eyebrow="FIRST CHAMBER · REVIEW" go={go} /><Progress current={1} /><section className="parchment review-card"><div className="seal">AF</div>{formula.slots.map(slot => <div className="review-row" key={slot}><span>{slot}</span><strong>{answers[slot] || '尚未填写'}</strong><Pencil size={14} onClick={() => go('knowledge')} /></div>)}<div className="paper-line" /></section><button className="primary-button bottom-button" onClick={() => go('fill')}>进入句型填充 <ArrowRight size={17} /></button></main> }
-function FillPage({ point, formula, tokens, setTokens, wordBank, go }: { point: string; formula: Formula; tokens: string[]; setTokens: (x: string[]) => void; wordBank: string[]; go: (stage: Stage) => void }) { const remaining = wordBank.filter(w => !tokens.includes(w)); return <main className="page flow-page"><Header title="句型填充" eyebrow="SECOND CHAMBER · 02" go={go} /><Progress current={2} /><div className="compact-person"><div className="portrait small">✦</div><b>{point}</b><span>当前考点</span></div><section className="parchment sentence-card"><div className="card-title"><span>✧ 学术句式</span><button title="朗读" onClick={() => window.speechSynthesis?.speak(new SpeechSynthesisUtterance(formula.text))}><Volume2 size={16} /></button></div><p>{formula.text.split(/【|】/).map((part, i) => i % 2 ? <button className={`slot ${tokens[i / 2 - .5] ? 'filled' : ''}`} key={i} onClick={() => tokens[i / 2 - .5] && setTokens(tokens.filter(t => t !== tokens[i / 2 - .5]))}>{tokens[i / 2 - .5] || part}</button> : <span key={i}>{part}</span>)}</p><div className="sentence-status"><Check size={14} />{tokens.length} / {wordBank.length} 个知识槽位已填入</div></section><section className="word-bank"><div className="card-title"><span>「{point}」关联词块</span><button onClick={() => setTokens([])}><RotateCcw size={14} /> 重置</button></div><div className="chips">{remaining.map(word => <button className="chip" key={word} onClick={() => setTokens([...tokens, word])}>{word}<Plus size={13} /></button>)}</div></section><button className="primary-button bottom-button" onClick={() => go('generate')}>完成填充，进入独立生成 <ArrowRight size={17} /></button></main> }
-function GeneratePage({ point, essay, setEssay, showReference, setShowReference, answers, formula, finish }: { point: string; essay: string; setEssay: (x: string) => void; showReference: boolean; setShowReference: (x: boolean) => void; answers: Record<string, string>; formula: Formula; finish: () => void }) { return <main className="page flow-page"><Header title="独立生成" eyebrow="THIRD CHAMBER · 03" go={() => undefined} /><Progress current={3} /><section className="generate-heading"><span>请围绕当前考点完成一段学术论述</span><h2>{point}</h2><p>隐藏提示，写出你自己的表达。</p></section><textarea className="essay-paper" value={essay} onChange={e => setEssay(e.target.value)} placeholder={`围绕「${point}」写出完整论述……`} /><div className="essay-tools"><span>{essay.length} 字</span><button><Mic2 size={15} /> 语音输入</button></div><button className="primary-button bottom-button" onClick={() => setShowReference(true)}>完成作答 <Trophy size={17} /></button>{showReference && <section className="reference-card"><div className="card-title"><span>✧ 研习回看</span><button onClick={finish}><Check size={15} /> 保存并返回</button></div><p className="your-answer">{essay || '你还没有输入文字。'}</p><details><summary>查看前两阶段记录 <ChevronDown size={15} /></summary><p><b>知识：</b>{Object.values(answers).join(' · ')}</p><p><b>句型：</b>{formula.text}</p></details></section>}</main> }
-function LibraryPage({ formulas, setFormulas, newFormula, selectedFormula, setSelectedFormula, go }: { formulas: Formula[]; setFormulas: (x: Formula[]) => void; newFormula: () => void; selectedFormula: number; setSelectedFormula: (x: number) => void; go: (stage: Stage) => void }) { return <main className="page library-page"><Header title="句型库" eyebrow="THE FORMULA LIBRARY" go={go} /><div className="library-intro"><BookOpen size={22} /><p>你的句式藏书<br /><b>{formulas.length} 个可编辑句型</b></p><button onClick={newFormula}><Plus size={16} /> 新增</button></div><div className="bookshelf">{formulas.map((item, i) => <article className={`formula-book ${i === selectedFormula ? 'selected' : ''}`} key={item.id} onClick={() => setSelectedFormula(i)}><div className="book-index">0{i + 1}</div><div><span>ACADEMIC PATTERN</span><h2>{item.title}</h2><p>{item.text}</p><div className="book-progress"><i style={{ width: `${item.progress * 5}%` }} /></div></div><button onClick={e => { e.stopPropagation(); const title = window.prompt('编辑句型名称', item.title); if (title) setFormulas(formulas.map(f => f.id === item.id ? { ...f, title } : f)) }}><Settings2 size={16} /></button></article>)}</div></main> }
-function ArchivePage({ points, trained, go }: { points: number; trained: number; go: (stage: Stage) => void }) { return <main className="page archive-page"><Header title="学习档案" eyebrow="YOUR STUDY ARCHIVE" go={go} /><section className="profile-card"><div className="avatar">A</div><div><span>THE HIDDEN STUDY</span><h2>我的研习档案</h2><p>记录每一次思想的成形。</p></div><Star size={19} /></section><div className="stats-grid"><div><strong>{trained}</strong><span>已训练人物</span></div><div><strong>{points}</strong><span>累计积分</span></div><div><strong>12</strong><span>掌握句型</span></div></div><section className="history"><div className="card-title"><span>最近研习</span><span>查看全部</span></div><div className="history-row"><div className="history-icon"><Check size={16} /></div><div><b>格鲁克 · 历史语境中的改革者</b><small>三阶段训练 · 刚刚</small></div><strong>+120</strong></div></section></main> }
+
+function FillPage({ point, formula, answers, filled, setFilled, go }: { point: string; formula: Formula; answers: Record<string,string>; filled: Record<string,string>; setFilled: (filled: Record<string,string>) => void; go: (stage: Stage) => void }) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const count = formula.slots.filter(slot => filled[slot]).length
+  const complete = count === formula.slots.length
+  const choose = (source: string) => {
+    const target = selected || formula.slots.find(slot => !filled[slot])
+    if (!target) return
+    setFilled({ ...filled, [target]: answers[source] })
+    setSelected(null)
+  }
+  const undo = (slot: string) => { const next = { ...filled }; delete next[slot]; setFilled(next); setSelected(slot) }
+  return <main className="page flow-page"><Header title="句型填充" go={go}/><Progress current={2}/><div className="compact-person"><b>{point}</b><span>{formula.title}</span></div><section className="parchment sentence-card"><p>{formula.text.split(/(【[^】]+】)/g).map((part, i) => {
+    const match = part.match(/^【([^】]+)】$/)
+    if (!match) return <span key={i}>{part}</span>
+    const slot = match[1]
+    return <button className={'slot ' + (filled[slot] ? 'filled' : '')} aria-pressed={selected === slot} key={i} onClick={() => filled[slot] ? undo(slot) : setSelected(slot)}>{filled[slot] || slot}</button>
+  })}</p><div className="sentence-status">{count} / {formula.slots.length} 个槽位已填</div>{complete && <button className="text-action" onClick={() => { const utterance = new SpeechSynthesisUtterance(buildSentence(formula.text, filled)); utterance.lang = 'zh-CN'; window.speechSynthesis?.speak(utterance) }}><Volume2 size={16}/>朗读完整句子</button>}</section><section className="word-bank"><div className="card-title"><span>{selected ? '正在填入：' + selected : '点击词块填入空位'}</span><button onClick={() => { setFilled({}); setSelected(null) }}><RotateCcw size={14}/>重置</button></div><div className="chips">{formula.slots.map(slot => <button className="chip" key={slot} onClick={() => choose(slot)}>{answers[slot]}</button>)}</div></section><button disabled={!complete} className="primary-button bottom-button" onClick={() => go('generate')}>进入独立生成 <ArrowRight size={16}/></button></main>
+}
+
+function GeneratePage({ draft, formula, setDraft, finish, go }: { draft: Draft; formula: Formula; setDraft: React.Dispatch<React.SetStateAction<Draft>>; finish: () => void; go: (stage: Stage) => void }) {
+  return <main className="page flow-page"><Header title="独立生成" go={go}/><Progress current={3}/><section className="generate-heading"><h2>{draft.point}</h2></section><textarea className="essay-paper" value={draft.essay} onChange={e => setDraft(d => ({ ...d, essay: e.target.value, reviewed: false }))} aria-label="独立论述" placeholder="独立写出完整论述……"/><div className="essay-tools">{draft.essay.length} 字</div><button disabled={!draft.essay.trim()} className="primary-button bottom-button" onClick={() => setDraft(d => ({ ...d, reviewed: true }))}>完成作答，查看对照</button>{draft.reviewed && <section className="reference-card"><h3>前两阶段记录</h3><details><summary>知识定位</summary>{formula.slots.map(slot => <p key={slot}>{slot}：{draft.answers[slot]}</p>)}</details><details><summary>句型填充</summary><p>{buildSentence(formula.text, draft.filled)}</p></details><button className="primary-button bottom-button" onClick={finish}><Check size={16}/>我确认完成，保存并继续</button></section>}</main>
+}
 function BottomNav({ stage, go }: { stage: Stage; go: (stage: Stage) => void }) { return <nav className="bottom-nav"><button className={stage === 'home' ? 'active' : ''} onClick={() => go('home')}><Home size={18} /><span>首页</span></button><button className={stage === 'map' ? 'active' : ''} onClick={() => go('map')}><MapIcon size={18} /><span>考点地图</span></button><button className={stage === 'library' ? 'active' : ''} onClick={() => go('library')}><Library size={18} /><span>句型库</span></button><button className={stage === 'archive' ? 'active' : ''} onClick={() => go('archive')}><Archive size={18} /><span>学习档案</span></button></nav> }
