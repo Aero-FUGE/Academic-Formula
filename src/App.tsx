@@ -3,8 +3,9 @@ import ModeHome from './HomePage'
 import { Archive, ArrowLeft, ArrowRight, BookOpen, Check, Feather, Home, Library, Map as MapIcon, Menu, Pencil, Plus, RotateCcw, Settings2, Star, Trophy, Volume2 } from 'lucide-react'
 import { buildSentence, hasCompleted, nextFormula, nextPoint, slotsFromText, type TrainingRecord } from './training'
 import './training.css'
+import './knowledge.css'
 
-type Stage = 'home' | 'map' | 'select-point' | 'select' | 'knowledge' | 'confirm' | 'fill' | 'generate' | 'library' | 'archive' | 'done'
+type Stage = 'home' | 'map' | 'select-point' | 'select' | 'knowledge' | 'fill' | 'generate' | 'library' | 'archive' | 'done'
 type Mode = 'knowledge' | 'formula'
 type Formula = { id: number; title: string; text: string; slots: string[]; progress: number }
 const seedFormulas: Formula[] = [
@@ -37,7 +38,7 @@ export default function App() {
     const stored = load<Formula[]>('af-formulas', seedFormulas)
     return (Array.isArray(stored) && stored.length ? stored : seedFormulas).map(f => ({ ...f, slots: slotsFromText(f.text) }))
   })
-  const [draft, setDraft] = useState<Draft>(() => load('af-training-draft-v1', initialDraft()))
+  const [draft, setDraft] = useState<Draft>(() => { const saved = load<Draft & { stage: string }>('af-training-draft-v1', initialDraft()); return { ...saved, stage: (saved.stage as string) === 'confirm' ? 'knowledge' : saved.stage } })
   const saving = useRef(false)
   const finishedAttempts = useRef(new Set<string>())
   const [error, setError] = useState('')
@@ -46,14 +47,14 @@ export default function App() {
   const { stage, mode, point, answers, filled, essay } = draft
   const go = (stage: Stage) => { setDraft(d => ({ ...d, stage })); window.scrollTo(0, 0) }
   useEffect(() => {
-    try { localStorage.setItem('af-training-draft-v1', JSON.stringify(draft)); localStorage.setItem('af-formulas', JSON.stringify(formulas)) }
+    try { localStorage.setItem('af-training-draft-v1', JSON.stringify(draft)); localStorage.setItem('af-formulas', JSON.stringify(formulas)); if (draft.point) localStorage.setItem(`af-knowledge-draft:${draft.formulaId}:${draft.point}`, JSON.stringify(draft.answers)) }
     catch { setError('本机存储空间不足，请保留当前页面。') }
   }, [draft, formulas])
   const completedPoints = allKnowledgePoints.filter(p => formulas.every(f => hasCompleted(records, f.id, p))).length
   const begin = (mode: Mode, formulaId: number, point: string) => {
     saving.current = false
     setError('')
-    setDraft({ ...initialDraft(), mode, formulaId, point, stage: 'knowledge' })
+    setDraft({ ...initialDraft(), mode, formulaId, point, answers: load<Record<string, string>>(`af-knowledge-draft:${formulaId}:${point}`, {}), stage: 'knowledge' })
     window.scrollTo(0, 0)
   }
   const chooseFormula = (f: Formula) => {
@@ -99,9 +100,8 @@ export default function App() {
       const categories = stage === 'select-point' ? [['作曲家', group.composers], ['音乐作品', group.works]] as const : [['作曲家', group.composers], ['音乐作品', group.works], ['音乐体裁 / 传统', group.genres]] as const
       return <section className="map-period training-chapter" key={group.period}><h2>{group.period}</h2>{categories.map(([label, points]) => <div className="point-category" key={label}><h3>{label}</h3>{points.filter(p => p.includes(search.trim())).map(p => <details className="point-progress" key={p}><summary>{p}<small>{formulas.filter(f => hasCompleted(records, f.id, p)).length} / {formulas.length} 句型</small></summary><ul>{formulas.map(f => <li key={f.id}>{hasCompleted(records, f.id, p) ? '✓ 已完成' : '○ 未完成'} · {f.title}</li>)}</ul><button className="primary-button" onClick={() => choosePoint(p)}>以此考点训练 <ArrowRight size={15}/></button></details>)}</div>)}</section>
     })}</main>}
-    {['knowledge', 'confirm', 'fill', 'generate'].includes(stage) && <div className="session-label">{mode === 'formula' ? '句型专项 · 固定句型' : '考点专项 · 固定考点'}<br/>{point} · {formula.title}</div>}
-    {stage === 'knowledge' && <KnowledgePage point={point} group={groupForPoint(point)} formula={formula} answers={answers} setAnswer={(slot, value) => setDraft(d => ({ ...d, answers: { ...d.answers, [slot]: value } }))} go={next => { if (next === 'confirm' && formula.slots.some(slot => !answers[slot]?.trim())) { setError('请填写所有知识槽位后继续。'); return } setError(''); go(next) }}/>}
-    {stage === 'confirm' && <ConfirmPage formula={formula} answers={answers} go={go}/>}
+    {['knowledge', 'fill', 'generate'].includes(stage) && <div className="session-label">{mode === 'formula' ? '句型专项 · 固定句型' : '考点专项 · 固定考点'}<br/>{point} · {formula.title}</div>}
+    {stage === 'knowledge' && <KnowledgePage point={point} group={groupForPoint(point)} formula={formula} answers={answers} setAnswer={(slot, value) => setDraft(d => ({ ...d, answers: { ...d.answers, [slot]: value } }))} go={next => { if (next === 'fill' && formula.slots.some(slot => !answers[slot]?.trim())) { setError('请填写所有知识槽位后继续。'); return } setError(''); go(next) }}/>}
     {stage === 'fill' && <FillPage point={point} formula={formula} answers={answers} filled={filled} setFilled={filled => setDraft(d => ({ ...d, filled }))} go={go}/>}
     {stage === 'generate' && <GeneratePage draft={draft} formula={formula} setDraft={setDraft} finish={finish} go={go}/>}
     {stage === 'library' && <main className="page library-page"><Header title="句型档案" go={go}/><div className="library-intro"><BookOpen/><p>{formulas.length} 个句型 · 双模式共用记录</p><button onClick={newFormula}><Plus size={16}/>新增</button></div>{formulas.map(f => {
@@ -117,8 +117,23 @@ export default function App() {
 function Header({ title, eyebrow, go }: { title: string; eyebrow?: string; go: (stage: Stage) => void }) { return <header className="top"><button className="back" onClick={() => go('home')}><ArrowLeft size={18} /></button><div><span className="eyebrow">{eyebrow || 'ACADEMIC FORMULA'}</span><h1>{title}</h1></div><button className="top-icon"><Menu size={19} /></button></header> }
 function Progress({ current }: { current: number }) { return <div className="stage-progress"><div className={current >= 1 ? 'on' : ''}><span>01</span><small>知识定位</small></div><i /><div className={current >= 2 ? 'on' : ''}><span>02</span><small>句型填充</small></div><i /><div className={current >= 3 ? 'on' : ''}><span>03</span><small>独立生成</small></div></div> }
 
-function KnowledgePage({ point, group, formula, answers, setAnswer, go }: { point: string; group: KnowledgeGroup; formula: Formula; answers: Record<string, string>; setAnswer: (key: string, value: string) => void; go: (stage: Stage) => void }) { return <main className="page flow-page"><Header title="知识定位" eyebrow="FIRST CHAMBER · 01" go={go} /><Progress current={1} /><section className="person-card"><div className="portrait">✦</div><div><span>{group.period} · CURRENT POINT</span><h2>{point}</h2><p>{pointType(point, group)} · 自动联动考点</p></div><Feather size={25} /></section><section className="form-card formula-slots">{formula.slots.map(slot => <label className="knowledge-field" key={slot}><span>{slot}<b>*</b></span><input value={answers[slot] || ''} onChange={e => setAnswer(slot, e.target.value)} placeholder={`填写${slot}`} /></label>)}</section><button className="primary-button bottom-button" onClick={() => go('confirm')}>确认知识 <ArrowRight size={17} /></button></main> }
-function ConfirmPage({ formula, answers, go }: { formula: Formula; answers: Record<string, string>; go: (stage: Stage) => void }) { return <main className="page flow-page"><Header title="知识确认" eyebrow="FIRST CHAMBER · REVIEW" go={go} /><Progress current={1} /><section className="parchment review-card"><div className="seal">AF</div>{formula.slots.map(slot => <div className="review-row" key={slot}><span>{slot}</span><strong>{answers[slot] || '尚未填写'}</strong><Pencil size={14} onClick={() => go('knowledge')} /></div>)}<div className="paper-line" /></section><button className="primary-button bottom-button" onClick={() => go('fill')}>进入句型填充 <ArrowRight size={17} /></button></main> }
+function KnowledgePage({ point, group, formula, answers, setAnswer, go }: { point: string; group: KnowledgeGroup; formula: Formula; answers: Record<string, string>; setAnswer: (key: string, value: string) => void; go: (stage: Stage) => void }) {
+  const inputs = useRef<Record<string, HTMLTextAreaElement | null>>({})
+  const resize = (input: HTMLTextAreaElement | null) => { if (!input) return; input.style.height = 'auto'; input.style.height = Math.max(44, input.scrollHeight) + 'px' }
+  return <main className="page flow-page knowledge-compact-page">
+    <Header title="知识定位" eyebrow="FIRST CHAMBER · 01" go={go}/>
+    <Progress current={1}/>
+    <section className="person-card"><div><span>{group.period}</span><h2>{point}</h2></div></section>
+    <section className="parchment review-card editable-knowledge" aria-label="编辑知识卡片">
+      {formula.slots.map(slot => <div className="review-row editable-knowledge-row" key={slot}>
+        <label htmlFor={'knowledge-' + slot}>{slot}</label>
+        <textarea id={'knowledge-' + slot} ref={input => { inputs.current[slot] = input; resize(input) }} rows={1} value={answers[slot] || ''} placeholder="点击填写" onChange={e => { setAnswer(slot, e.target.value); resize(e.currentTarget) }}/>
+        <button type="button" className="knowledge-edit-button" aria-label={'编辑' + slot} onClick={() => inputs.current[slot]?.focus()}><Pencil size={16}/></button>
+      </div>)}
+      <button className="primary-button bottom-button" onClick={() => go('fill')}>进入句型填充 <ArrowRight size={17}/></button>
+    </section>
+  </main>
+}
 
 function FillPage({ point, formula, answers, filled, setFilled, go }: { point: string; formula: Formula; answers: Record<string,string>; filled: Record<string,string>; setFilled: (filled: Record<string,string>) => void; go: (stage: Stage) => void }) {
   const [selected, setSelected] = useState<string | null>(null)

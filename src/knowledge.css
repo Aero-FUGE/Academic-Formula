@@ -1,0 +1,15 @@
+.knowledge-compact-page{padding-bottom:36px}
+.knowledge-compact-page .top{margin-bottom:10px}
+.knowledge-compact-page .stage-progress{margin-bottom:16px}
+.knowledge-compact-page .person-card{padding:10px 14px}
+.knowledge-compact-page .person-card h2{margin:4px 0 0}
+.knowledge-compact-page .editable-knowledge{margin-top:14px;padding:8px 14px 14px}
+.editable-knowledge .editable-knowledge-row{display:grid;grid-template-columns:minmax(80px,.85fr) minmax(0,1.6fr) 36px;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #b3896e66}
+.editable-knowledge-row label{color:#805d4f;font:12px/1.6 'Noto Serif SC',serif;overflow-wrap:anywhere;cursor:text}
+.editable-knowledge-row textarea{display:block;width:100%;min-height:44px;box-sizing:border-box;margin:0;padding:9px 6px;border:1px solid transparent;border-radius:4px;outline:none;resize:none;overflow:hidden;background:transparent;color:#4a2b30;font:16px/1.6 'Noto Serif SC',serif;overflow-wrap:anywhere;transition:background .15s,border-color .15s}
+.editable-knowledge-row textarea::placeholder{color:#a9826d;font-size:13px}
+.editable-knowledge-row textarea:focus{background:#fff0d6a8;border-color:#ac794e;box-shadow:0 0 0 2px #a66d4320}
+.editable-knowledge-row .knowledge-edit-button{display:grid;place-items:center;width:36px;min-height:44px;padding:0;border:0;background:transparent;color:#99654a;border-radius:4px;cursor:pointer}
+.knowledge-edit-button:focus-visible{outline:2px solid #895172}
+.editable-knowledge .bottom-button{margin-top:14px;min-height:46px}
+@media(max-width:360px){.knowledge-compact-page{padding-left:12px;padding-right:12px}.knowledge-compact-page .editable-knowledge{padding-left:10px;padding-right:10px}.editable-knowledge .editable-knowledge-row{grid-template-columns:minmax(70px,.8fr) minmax(0,1.4fr) 32px;gap:3px}.editable-knowledge-row .knowledge-edit-button{width:32px}}
