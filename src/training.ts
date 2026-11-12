@@ -24,3 +24,14 @@ export const slotsFromText = (text: string) => [...new Set(Array.from(text.match
 
 export const buildSentence = (text: string, filled: Record<string, string>) =>
   text.replace(/【([^】]+)】/g, (placeholder, slot: string) => filled[slot] || placeholder)
+
+// Treat equal answer texts as distinct blocks without exposing their field names.
+export const availableBlocks = (blocks: { id: string; text: string }[], filled: Record<string, string>) => {
+  const used = Object.values(filled).filter(Boolean)
+  return blocks.filter(block => {
+    const index = used.indexOf(block.text)
+    if (index < 0) return true
+    used.splice(index, 1)
+    return false
+  })
+}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import ModeHome from './HomePage'
 import { Archive, ArrowLeft, ArrowRight, BookOpen, Check, Feather, Home, Library, Map as MapIcon, Menu, Pencil, Plus, RotateCcw, Settings2, Star, Trophy, Volume2 } from 'lucide-react'
-import { buildSentence, hasCompleted, nextFormula, nextPoint, slotsFromText, type TrainingRecord } from './training'
+import { availableBlocks, buildSentence, hasCompleted, nextFormula, nextPoint, slotsFromText, type TrainingRecord } from './training'
 import './training.css'
 import './knowledge.css'
+import './fill.css'
 
 type Stage = 'home' | 'map' | 'select-point' | 'select' | 'knowledge' | 'fill' | 'generate' | 'library' | 'archive' | 'done'
 type Mode = 'knowledge' | 'formula'
@@ -137,21 +138,47 @@ function KnowledgePage({ point, group, formula, answers, setAnswer, go }: { poin
 
 function FillPage({ point, formula, answers, filled, setFilled, go }: { point: string; formula: Formula; answers: Record<string,string>; filled: Record<string,string>; setFilled: (filled: Record<string,string>) => void; go: (stage: Stage) => void }) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [blocks] = useState(() => {
+    const items = formula.slots.map((slot, index) => ({ id: String(index), text: answers[slot] }))
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[items[i], items[j]] = [items[j], items[i]]
+    }
+    return items
+  })
+  const available = availableBlocks(blocks, filled)
   const count = formula.slots.filter(slot => filled[slot]).length
   const complete = count === formula.slots.length
-  const choose = (source: string) => {
-    const target = selected || formula.slots.find(slot => !filled[slot])
-    if (!target) return
-    setFilled({ ...filled, [target]: answers[source] })
+  const place = (slot: string) => {
+    if (filled[slot]) {
+      const next = { ...filled }
+      delete next[slot]
+      setFilled(next)
+      setSelected(null)
+      return
+    }
+    const block = available.find(item => item.id === selected)
+    if (!block) return
+    setFilled({ ...filled, [slot]: block.text })
     setSelected(null)
   }
-  const undo = (slot: string) => { const next = { ...filled }; delete next[slot]; setFilled(next); setSelected(slot) }
-  return <main className="page flow-page"><Header title="句型填充" go={go}/><Progress current={2}/><div className="compact-person"><b>{point}</b><span>{formula.title}</span></div><section className="parchment sentence-card"><p>{formula.text.split(/(【[^】]+】)/g).map((part, i) => {
-    const match = part.match(/^【([^】]+)】$/)
-    if (!match) return <span key={i}>{part}</span>
-    const slot = match[1]
-    return <button className={'slot ' + (filled[slot] ? 'filled' : '')} aria-pressed={selected === slot} key={i} onClick={() => filled[slot] ? undo(slot) : setSelected(slot)}>{filled[slot] || slot}</button>
-  })}</p><div className="sentence-status">{count} / {formula.slots.length} 个槽位已填</div>{complete && <button className="text-action" onClick={() => { const utterance = new SpeechSynthesisUtterance(buildSentence(formula.text, filled)); utterance.lang = 'zh-CN'; window.speechSynthesis?.speak(utterance) }}><Volume2 size={16}/>朗读完整句子</button>}</section><section className="word-bank"><div className="card-title"><span>{selected ? '正在填入：' + selected : '点击词块填入空位'}</span><button onClick={() => { setFilled({}); setSelected(null) }}><RotateCcw size={14}/>重置</button></div><div className="chips">{formula.slots.map(slot => <button className="chip" key={slot} onClick={() => choose(slot)}>{answers[slot]}</button>)}</div></section><button disabled={!complete} className="primary-button bottom-button" onClick={() => go('generate')}>进入独立生成 <ArrowRight size={16}/></button></main>
+  return <main className="page flow-page"><Header title="句型填充" go={go}/><Progress current={2}/>
+    <div className="compact-person"><b>{point}</b><span>{formula.title}</span></div>
+    <section className="parchment sentence-card blind-fill">
+      <p>{formula.text.split(/(【[^】]+】)/g).map((part, i) => {
+        const match = part.match(/^【([^】]+)】$/)
+        if (!match) return <span key={i}>{part}</span>
+        const slot = match[1]
+        return <button type="button" className={'slot blind-slot ' + (filled[slot] ? 'filled' : '')} aria-label={filled[slot] ? '撤回：' + filled[slot] : '空白，点击放入所选词块'} key={i} onClick={() => place(slot)}>{filled[slot] || null}</button>
+      })}</p>
+      <div className="sentence-status" aria-live="polite">{count} / {formula.slots.length} 个空格已填</div>
+      {complete && <button className="text-action" onClick={() => { const utterance = new SpeechSynthesisUtterance(buildSentence(formula.text, filled)); utterance.lang = 'zh-CN'; window.speechSynthesis?.speak(utterance) }}><Volume2 size={16}/>朗读完整句子</button>}
+    </section>
+    <section className="word-bank"><div className="card-title"><span>{selected ? '已选词块，请点击句中空格' : '先选词块，再点空格'}</span><button onClick={() => { setFilled({}); setSelected(null) }}><RotateCcw size={14}/>重置</button></div>
+      <div className="chips">{available.map(block => <button type="button" className="chip" aria-pressed={selected === block.id} key={block.id} onClick={() => setSelected(selected === block.id ? null : block.id)}>{block.text}</button>)}</div>
+    </section>
+    <button disabled={!complete} className="primary-button bottom-button" onClick={() => go('generate')}>确认完成，进入独立生成 <ArrowRight size={16}/></button>
+  </main>
 }
 
 function GeneratePage({ draft, formula, setDraft, finish, go }: { draft: Draft; formula: Formula; setDraft: React.Dispatch<React.SetStateAction<Draft>>; finish: () => void; go: (stage: Stage) => void }) {

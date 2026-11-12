@@ -1,0 +1,6 @@
+.blind-fill .blind-slot{display:inline-block;min-width:64px;min-height:44px;vertical-align:middle;margin:3px 4px;padding:6px 9px;line-height:1.6;border:1px dashed #b2764b;background:#f3d6a744;cursor:pointer}
+.blind-fill .blind-slot:empty{width:64px}
+.blind-fill .blind-slot.filled{background:#a9684e;color:#fff0ce;border-style:solid}
+.blind-fill .blind-slot:focus-visible{outline:2px solid #895172;outline-offset:2px}
+.word-bank .chip{min-height:44px}
+.word-bank .chip[aria-pressed=true]{border-color:#efc37d;background:#6a3c55;color:#ffe8bb;box-shadow:0 0 0 2px #d4a16255}

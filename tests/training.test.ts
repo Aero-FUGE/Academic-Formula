@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildSentence, hasCompleted, nextFormula, nextPoint, slotsFromText, type TrainingRecord } from '../src/training.ts'
+import { availableBlocks, buildSentence, hasCompleted, nextFormula, nextPoint, slotsFromText, type TrainingRecord } from '../src/training.ts'
 
 const record = (formulaId: number, point: string, mode: 'knowledge' | 'formula' = 'formula'): TrainingRecord => ({
   id: `${formulaId}-${point}`, formulaId, point, mode, formulaTitle: '句型', answers: {}, template: '', sentence: '', essay: '独立作答', completedAt: '2026-11-12T00:00:00Z',
@@ -31,4 +31,19 @@ test('槽位从句型提取，重复标题共用答案，重复答案值不丢�
   assert.deepEqual(slotsFromText(template), ['人物', '方法', '贡献'])
   assert.equal(buildSentence(template, { 人物: '贝多芬', 方法: '主题发展', 贡献: '主题发展' }), '贝多芬以主题发展发展创作，贝多芬推动主题发展。')
   assert.equal(buildSentence(template, {}), template)
+})
+
+test('词块可放入任意空位，使用后移出词库，撤回后恢复', () => {
+  const blocks = [{ id: 'a', text: '贝多芬' }, { id: 'b', text: '德国' }]
+  const filled = { 人物: '德国' }
+  assert.deepEqual(availableBlocks(blocks, filled), [{ id: 'a', text: '贝多芬' }])
+  assert.equal(buildSentence('【人物】来自【国家】', filled), '德国来自【国家】')
+  assert.deepEqual(availableBlocks(blocks, {}), blocks)
+})
+
+test('相同内容的词块按数量消耗，互不覆盖，刷新后可重建可用词块', () => {
+  const blocks = [{ id: 'a', text: '歌剧' }, { id: 'b', text: '歌剧' }]
+  assert.equal(availableBlocks(blocks, { 领域: '歌剧' }).length, 1)
+  assert.equal(availableBlocks(blocks, { 领域: '歌剧', 体裁: '歌剧' }).length, 0)
+  assert.equal(availableBlocks(blocks, {}).length, 2)
 })
