@@ -35,3 +35,50 @@ body:after{content:'';position:fixed;inset:0;background:radial-gradient(circle a
   .home .sentences-preview{padding-top:14px}
   .home .preview-composition{margin-top:12px}
 }
+
+/* Reference proportions: compact typography and a narrower archive column. */
+@media(min-width:901px){
+  .home .dashboard-layout{grid-template-columns:190px minmax(0,1fr);gap:22px}
+  .home .sidebar{padding-left:4px;padding-right:4px}
+  .home .side-brand strong{font-size:15px}
+  .home .side-brand em{font-size:11px}
+  .home .study-seal{margin-top:24px;margin-bottom:18px;padding:13px 6px}
+  .home nav button{padding:10px 12px;font-size:13px;gap:11px}
+  .home .dashboard-intro{padding:7px 16px 13px}
+  .home .dashboard-intro h1{font-size:27px;letter-spacing:.03em}
+  .home .dashboard-intro p{font-size:12px}
+  .home .dashboard-stats{gap:8px}
+  .home .dashboard-stats span{padding:4px 13px}
+  .home .dashboard-stats strong{font-size:22px}
+  .home .dashboard-stats small{font-size:10px}
+  .home .archive-workbench{grid-template-columns:minmax(300px,.72fr) minmax(470px,1.28fr);gap:14px;padding-top:11px}
+  .home .archive-panel{padding:16px 16px}
+  .home .archive-heading h2{font-size:18px;margin-top:4px}
+  .home .archive-heading h2 small{font-size:12px}
+  .home .filter-pill{padding:5px 11px;font-size:11px}
+  .home .archive-list{margin-top:13px;gap:7px}
+  .home .archive-card{grid-template-columns:42px minmax(0,1fr) 32px 17px;gap:9px;padding:9px 8px}
+  .home .archive-avatar{width:40px;height:40px;font-size:18px}
+  .home .archive-info h3{font-size:15px}
+  .home .archive-info span,.home .archive-info p{font-size:10px}
+  .home .archive-info p{margin:2px 0 5px}
+  .home .archive-percent{font-size:14px}
+  .home .new-archive{padding:8px 27px;font-size:13px}
+  .home .detail-heading{padding:13px 18px 11px}
+  .home .portrait{width:58px;height:58px;font-size:25px}
+  .home .detail-heading h2{font-size:21px}
+  .home .detail-heading h2 small{font-size:13px}
+  .home .detail-heading p{font-size:10px;margin-top:3px}
+  .home .detail-tabs span{padding:9px 15px;font-size:12px}
+  .home .detail-section{padding-left:18px;padding-right:18px;padding-top:10px}
+  .home .detail-section-title h3{font-size:14px}
+  .home .detail-section-title button{font-size:10px}
+  .home .preview-chips{gap:5px;margin-top:8px}
+  .home .preview-chips span{padding:5px 8px;font-size:10px}
+  .home .preview-sentence{margin-top:5px;padding:7px 9px}
+  .home .preview-sentence strong,.home .preview-sentence span{font-size:10px}
+  .home .preview-sentence p{font-size:12px;margin-top:3px}
+  .home .preview-composition{margin:10px 18px 0;padding:9px 0;font-size:10px}
+  .home .preview-composition p{font-size:12px;line-height:1.5}
+  .home .open-studio{right:18px;bottom:12px;padding:7px 14px;font-size:11px}
+}
