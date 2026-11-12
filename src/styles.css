@@ -106,5 +106,6 @@ body:after{content:'';position:fixed;inset:0;background:radial-gradient(circle a
   .home .open-studio{right:18px;bottom:12px;padding:7px 14px;font-size:11px}
 }
 
-/* Preserve the 1672:941 canvas on extra-wide screens. */
-.image-home{width:min(100vw,177.789vh);height:min(100vh,56.28vw)}
+/* Keep the supplied 1672:941 artwork and its overlay on one shared canvas. */
+.image-home{width:min(100vw,calc(100vh * 1672 / 941));height:min(100vh,calc(100vw * 941 / 1672));aspect-ratio:1672 / 941;flex:none;container-type:size}
+.image-home-bg{background-size:100% 100%;background-repeat:no-repeat}
