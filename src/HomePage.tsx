@@ -1,4 +1,5 @@
 import './home.css'
+import './dragcss.css'
 
 type Props = {
   points: number

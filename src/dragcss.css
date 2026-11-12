@@ -1,0 +1,33 @@
+/* DragCSS layout, authored on a 284 × 796.248 card canvas.
+   Keep the exported coordinates on desktop; scale the same layout on phones. */
+.mode-home{container-type:inline-size}
+.mode-home .mode-card{top:calc(-141 / 548 * 100cqw);transform:scale(.98)}
+.mode-home .mode-formula{left:2px}
+.mode-home .mode-knowledge{left:-2px}
+.mode-home .mode-formula .mode-card-title{top:55.3648%;left:26.2829%;right:auto;width:49.5664%}
+.mode-home .mode-knowledge .mode-card-title{top:55.6603%;left:23.3544%;right:auto;width:49.5664%}
+.mode-home .mode-formula .mode-card-description{top:60.908%;left:32.1019%;right:auto;width:39.4307%;height:6.6804%}
+.mode-home .mode-knowledge .mode-card-description{top:61.2862%;left:29.9881%;right:auto;width:39.4377%}
+.mode-home .mode-formula .mode-card-action{top:69.6661%;left:31.923%;right:auto;width:42.8906%;height:6.29898%}
+.mode-home .mode-knowledge .mode-card-action{top:69.6469%;left:28.1894%;right:auto;width:42.8906%;height:6.29898%}
+.mode-home .mode-overview{top:calc(-195 / 548 * 100cqw);left:-3px}
+.mode-home .mode-heading{top:-9px;left:4px}
+.mode-home .mode-eyebrow{position:relative;top:-36px;left:calc(209 / 548 * 100cqw)}
+
+@media(min-width:580px){
+  .mode-home .mode-card{top:-141px;width:283.997px;height:796.248px}
+  .mode-home .mode-formula .mode-card-title{top:440.841px;left:74.6427px;right:68.5868px;bottom:322.575px;width:140.765px}
+  .mode-home .mode-knowledge .mode-card-title{top:443.194px;left:66.3281px;right:76.9123px;bottom:320.243px;width:140.765px}
+  .mode-home .mode-formula .mode-card-description{top:484.979px;left:91.1691px;right:80.8561px;bottom:258.085px;width:111.982px;height:53.1924px}
+  .mode-home .mode-knowledge .mode-card-description{top:487.99px;left:85.1654px;right:86.8392px;bottom:255.092px;width:112.002px}
+  .mode-home .mode-formula .mode-card-action{top:554.715px;left:90.66px;right:71.5381px;bottom:191.387px;width:121.808px;height:50.1555px}
+  .mode-home .mode-knowledge .mode-card-action{top:554.562px;left:80.0571px;right:82.1414px;bottom:191.532px;width:121.808px;height:50.1555px}
+  .mode-home .mode-overview{top:-195px;left:-3px;right:3px;bottom:195px;width:528.027px;height:126.575px}
+  .mode-home .mode-eyebrow{left:209px;right:-209px;bottom:36px}
+}
+
+/* Scope the exported application-canvas offset to the homepage only.
+   A responsive width avoids the exported 2252px canvas overflowing a phone. */
+@media(min-width:900px){
+  #root>.app:has(>.mode-home){position:relative;top:-76px;left:-9px;right:9px;bottom:76px;width:min(100%,2252.74px);min-height:750.912px}
+}
