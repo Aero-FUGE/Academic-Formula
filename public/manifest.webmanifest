@@ -1,5 +1,5 @@
 {
   "name": "学术八股文", "short_name": "学术八股文", "start_url": "./", "display": "standalone",
   "background_color": "#f5efdf", "theme_color": "#f5efdf", "lang": "zh-CN",
-  "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "icons": [{ "src": "./academic-formula-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }]
 }
