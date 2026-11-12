@@ -52,6 +52,9 @@ body:after{content:'';position:fixed;inset:0;background:radial-gradient(circle a
 .designer-live-preview .home .archive-workbench{min-height:0}
 .designer-grid{z-index:5}
 
+/* Values changed in design mode are applied to the real dashboard. */
+.layout-controlled{position:relative;display:block!important;min-height:0!important;height:100%}.layout-controlled>.sidebar{position:absolute;z-index:2;margin:0}.layout-controlled>.dashboard-content{position:absolute;inset:0;display:block;overflow:visible}.layout-controlled .dashboard-intro{position:absolute;margin:0;z-index:1}.layout-controlled .archive-workbench{position:absolute;inset:0;display:block;padding:0;min-height:0}.layout-controlled .archive-panel,.layout-controlled .detail-panel{position:absolute;margin:0;min-height:0}.layout-controlled .home-editor-bar{position:absolute;z-index:3;display:flex;align-items:center;gap:22px;padding:14px 20px;border:1px solid #be8a526e;background:#2b1921ed;color:#edcf9e;box-shadow:0 10px 25px #0008}.home-editor-bar input{flex:1;min-width:0;background:#f5e5d0;border:1px solid #c8a273;border-radius:4px;padding:9px 12px;color:#523326}.home-editor-bar button{background:#713d2d;color:#ffe4b5;border:1px solid #d1a15c;padding:8px 14px;border-radius:3px;white-space:nowrap}.home-editor-bar strong{font-size:12px;white-space:nowrap}.home-editor-bar span{font-size:13px;white-space:nowrap}
+
 /* Reference proportions: compact typography and a narrower archive column. */
 @media(min-width:901px){
   .home .dashboard-layout{grid-template-columns:190px minmax(0,1fr);gap:22px}
