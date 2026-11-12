@@ -105,3 +105,6 @@ body:after{content:'';position:fixed;inset:0;background:radial-gradient(circle a
   .home .preview-composition p{font-size:12px;line-height:1.5}
   .home .open-studio{right:18px;bottom:12px;padding:7px 14px;font-size:11px}
 }
+
+/* Preserve the 1672:941 canvas on extra-wide screens. */
+.image-home{width:min(100vw,177.789vh);height:min(100vh,56.28vw)}
